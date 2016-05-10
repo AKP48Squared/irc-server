@@ -29,6 +29,7 @@ You'll need to add a new server to your configuration file for each IRC server y
             "adminuser@irc.mywebsite.com": [
               "AKP48.owner"
             ]
+          },
           "alert": true // tells AKP48 that alerts should be sent to this channel.
         }
       }
