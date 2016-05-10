@@ -1,4 +1,4 @@
-This is a short description of the plugin.
+This plugin allows AKP48Squared to connect to IRC servers.
 
 # Installation
 
@@ -34,7 +34,7 @@ You'll need to add a new server to your configuration file for each IRC server y
       }
     }
   }
-],
+]
 ```
 
 # Issues
