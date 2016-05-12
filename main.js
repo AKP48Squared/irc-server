@@ -223,7 +223,9 @@ IRC.prototype.getPermissions = function (prefix, nick, channel) {
   var outputPerms = [];
 
   if(nick !== channel) {
-    users = this._client.chans[channel.toLowerCase()].users;
+    try { //surround in try...catch because sometimes weird things happen and the client's users object isn't there.
+      users = this._client.chans[channel.toLowerCase()].users;
+    } catch (e) {}
     configPerms = this.getChannelConfig(channel).users;
     globPerms = this.getChannelConfig('global').users;
   } else {
