@@ -1,13 +1,10 @@
 'use strict';
-const ServerConnectorPlugin = require('../../lib/ServerConnectorPlugin');
 const irc = require('irc');
 const Promise = require('bluebird'); // jshint ignore:line
 
-class IRC extends ServerConnectorPlugin {
-  constructor(config, id, AKP48, persistentObjects) {
-    super('IRC', AKP48);
-    this._id = id;
-    this._config = config;
+class IRC extends global.AKP48.pluginTypes.ServerConnector {
+  constructor(AKP48, config, id, persistentObjects) {
+    super('IRC', AKP48, config, id);
     this._defaultCommandDelimiters = ['!', '.'];
     var self = this;
     if(!config || !config.server || !config.nick) {
