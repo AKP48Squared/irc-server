@@ -273,3 +273,4 @@ IRC.prototype.getPersistentObjects = function () {
 };
 
 module.exports = IRC;
+module.exports.type = 'ServerConnector';
