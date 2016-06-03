@@ -3,12 +3,16 @@ const irc = require('irc');
 const Promise = require('bluebird'); // jshint ignore:line
 
 class IRC extends global.AKP48.pluginTypes.ServerConnector {
-  constructor(AKP48, config, id, persistentObjects) {
-    super('IRC', AKP48, config, id);
+  constructor(AKP48) {
+    super(AKP48, 'irc');
+  }
+  
+  load(persistentObjects) {
     this._defaultCommandDelimiters = ['!', '.'];
     var self = this;
+    var config = this._config;
     if(!config || !config.server || !config.nick) {
-      global.logger.error(`${self._pluginName}|${self._id}: Required server and/or nick options missing from config!`);
+      global.logger.error(`${self.name}|${self._id}: Required server and/or nick options missing from config!`);
       this._error = true;
       return;
     }
@@ -36,7 +40,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     }
 
     this._client.on('nick', (oldNick, newNick) => {
-      global.logger.stupid(`${self._pluginName}|${self._id}: Caught nick change event. "${oldNick}" => "${newNick}"`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught nick change event. "${oldNick}" => "${newNick}"`);
       self._AKP48.emit('nick', oldNick, newNick, self);
     });
 
@@ -53,24 +57,24 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     });
 
     this._client.on('registered', function() {
-      global.logger.verbose(`${self._pluginName}|${self._id}: Connected to ${self._config.server}.`);
+      global.logger.verbose(`${self.name}|${self._id}: Connected to ${self._config.server}.`);
       self._AKP48.emit('registeredOnServer', self._id, self);
     });
 
     this._client.on('join', function(chan, nick) {
       if(nick === self._client.nick) { return; }
-      global.logger.stupid(`${self._pluginName}|${self._id}: Caught join event on ${self._config.server}.`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught join event on ${self._config.server}.`);
       self._AKP48.emit('ircJoin', chan, nick, self);
     });
 
     this._client.on('part', function(chan, nick, reason) {
       if(nick === self._client.nick) { return; }
-      global.logger.stupid(`${self._pluginName}|${self._id}: Caught part event on ${self._config.server}.`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught part event on ${self._config.server}.`);
       self._AKP48.emit('ircPart', chan, nick, reason, self);
     });
 
     this._client.on('invite', function(channel, from) {
-      global.logger.debug(`${self._pluginName}|${self._id}: Invite to channel "${channel}" received from ${from}. Joining channel.`);
+      global.logger.debug(`${self.name}|${self._id}: Invite to channel "${channel}" received from ${from}. Joining channel.`);
       self._client.join(channel, function() {
         var joinMsg = `Hello, everyone! I'm ${self._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
         self._client.say(channel, joinMsg);
@@ -81,7 +85,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
 
     this._client.on('kick', function(channel, nick, by, reason) {
       if(nick === self._client.nick) {
-        global.logger.debug(`${self._pluginName}|${self._id}: Kicked from ${channel} by ${by} for "${reason}". Removing channel from config.`);
+        global.logger.debug(`${self.name}|${self._id}: Kicked from ${channel} by ${by} for "${reason}". Removing channel from config.`);
         var index = self._config.channels.indexOf(channel);
         while(index > -1) {
           self._config.channels.splice(index, 1);
@@ -92,7 +96,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     });
 
     this._client.on('error', function(message) {
-      global.logger.error(`${self._pluginName}|${self._id}: Error received from ${message.server}! ${message.command}: ${message.args}`);
+      global.logger.error(`${self.name}|${self._id}: Error received from ${message.server}! ${message.command}: ${message.args}`);
     });
 
     this._AKP48.on('msg_'+this._id, function(to, message, context) {
@@ -101,7 +105,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
         self._client.say(to, message);
         self._AKP48.sentMessage(to, message, context);
       } catch (e) {
-        global.logger.error(`${self._pluginName}|${self._id}: Error sending message to channel '${to}'! ${e.name}: ${e.message}`);
+        global.logger.error(`${self.name}|${self._id}: Error sending message to channel '${to}'! ${e.name}: ${e.message}`);
       }
     });
 
@@ -110,7 +114,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
         self._client.action(to, message);
         self._AKP48.sentMessage(to, message, context);
       } catch (e) {
-        global.logger.error(`${self._pluginName}|${self._id}: Error sending action to channel '${to}'! ${e.name}: ${e.message}`);
+        global.logger.error(`${self.name}|${self._id}: Error sending action to channel '${to}'! ${e.name}: ${e.message}`);
       }
     });
 
@@ -123,7 +127,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
               self._client.say(chan, message);
               self._AKP48.sentMessage(chan, message, {instanceId: self._id, myNick: self._client.nick});
             } catch (e) {
-              global.logger.error(`${self._pluginName}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`);
+              global.logger.error(`${self.name}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`);
             }
           }
         }
@@ -273,5 +277,3 @@ IRC.prototype.getPersistentObjects = function () {
 };
 
 module.exports = IRC;
-module.exports.type = 'ServerConnector';
-module.exports.pluginName = 'irc';
