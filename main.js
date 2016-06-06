@@ -6,7 +6,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
   constructor(AKP48) {
     super(AKP48, 'irc');
   }
-  
+
   load(persistentObjects) {
     this._defaultCommandDelimiters = ['!', '.'];
     var self = this;
@@ -46,14 +46,14 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
 
     this._client.on('message', function(nick, to, text, message) {
       if(to === config.nick) { to = nick; }
-      self._AKP48.onMessage(text, self.createContextsFromMessage(message, to));
+      self._AKP48.onMessage(self.createContextFromMessage(message, to));
     });
 
     this._client.on('action', function(nick, to, text, message) {
       if(to === config.nick) { to = nick; }
-      var context = self.createContextsFromMessage(message, to);
-      context.isAction = true;
-      self._AKP48.onMessage(text, context);
+      var context = self.createContextFromMessage(message, to);
+      context.setCustomData('ircAction', true);
+      self._AKP48.onMessage(context);
     });
 
     this._client.on('registered', function() {
@@ -158,63 +158,29 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
   }
 }
 
-IRC.prototype.createContextsFromMessage = function (message, to) {
-  var textArray = message.args[1].split(/[^\\]\|/);
-  var ctxs = [];
+IRC.prototype.createContextFromMessage = function (message, to) {
   var perms = this.getPermissions(`${message.user}@${message.host}`, message.nick, to);
+  var delimit = this.getChannelConfig(to).commandDelimiters || this._config.commandDelimiters || this._defaultCommandDelimiters;
 
-  for (var i = 0; i < textArray.length; i++) {
-    textArray[i] = textArray[i].trim();
-    var delimiterLength = this.isTextACommand(textArray[i], to);
-    if(delimiterLength) {
-      textArray[i] = textArray[i].slice(delimiterLength).trim();
-    }
+  var ctx = new this._AKP48.Context({
+    instance: this,
+    instanceType: 'irc',
+    nick: message.nick,
+    text: message.args[1],
+    to: to,
+    user: `${message.user}@${message.host}`,
+    commandDelimiters: delimit,
+    myNick: this._client.nick,
+    permissions: perms,
+    rawMessage: message
+  });
 
-    var ctx = {
-      rawMessage: message,
-      nick: message.nick,
-      user: message.prefix,
-      permissions: perms,
-      rawText: message.args[1],
-      text: textArray[i].trim(),
-      to: to,
-      myNick: this._client.nick,
-      instanceId: this._id,
-      instanceType: 'irc',
-      instance: this,
-      isCmd: delimiterLength ? true : false
-    };
-
-    // if user is banned, drop request after first context is created.
-    if(perms.includes('AKP48.banned')) {
-      // emit fullMsg event though, for consumers that want it.
-      // (that's why we wait until after the context is created)
-      this._AKP48.emit('fullMsg', message.args[1], ctx);
-      return;
-    }
-
-    ctxs.push(ctx);
-  }
-
-  ctxs[ctxs.length-1].last = true;
-
-  return ctxs;
+  return ctx;
 };
 
 IRC.prototype.getChannelConfig = function (channel) {
   if(!this._config.chanConfig) {return {};}
   return this._config.chanConfig[channel] || {};
-};
-
-IRC.prototype.isTextACommand = function (text, channel) {
-  var delimit = this.getChannelConfig(channel).commandDelimiters || this._config.commandDelimiters || this._defaultCommandDelimiters;
-  for (var i = 0; i < delimit.length; i++) {
-    if(text.toLowerCase().startsWith(delimit[i].toLowerCase())) {
-      return delimit[i].length;
-    }
-  }
-
-  return false;
 };
 
 IRC.prototype.getPermissions = function (prefix, nick, channel) {
