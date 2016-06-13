@@ -99,13 +99,14 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       global.logger.error(`${self.name}|${self._id}: Error received from ${message.server}! ${message.command}: ${message.args}`);
     });
 
-    this._AKP48.on('msg_'+this._id, function(to, message, context) {
+    this._AKP48.on('msg_'+this._id, function(context) {
+      var message = context.text();
       if(!context.getCustomData('noPrefix')) {message = `${context.nick()}: ${message}`;}
       try {
-        self._client.say(to, message);
-        self._AKP48.sentMessage(to, message, context);
+        self._client.say(context.to(), context.text());
+        self._AKP48.logMessage(context);
       } catch (e) {
-        global.logger.error(`${self.name}|${self._id}: Error sending message to channel '${to}'! ${e.name}: ${e.message}`, e);
+        global.logger.error(`${self.name}|${self._id}: Error sending message to channel '${context.to()}'! ${e.name}: ${e.message}`, e);
       }
     });
 
@@ -118,14 +119,14 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       }
     });
 
-    this._AKP48.on('alert', function(message, context) {
+    this._AKP48.on('alert', function(context) {
       for (var i = 0; i < self._config.channels.length; i++) {
         var chan = self._config.channels[i];
         if(self._config.chanConfig && self._config.chanConfig[chan]) {
           if(self._config.chanConfig[chan].alert) {
             try {
-              self._client.say(chan, message);
-              self._AKP48.sentMessage(chan, message, context.cloneWith({instance: self, myNick: self._client.nick}));
+              self._client.say(chan, context.text());
+              self._AKP48.sentMessage(chan, context.text(), context.cloneWith({instance: self, myNick: self._client.nick}));
             } catch (e) {
               global.logger.error(`${self.name}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`, e);
             }
