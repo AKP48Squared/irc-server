@@ -53,6 +53,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       if(to === config.nick) { to = nick; }
       var context = self.createContextFromMessage(message, to);
       context.setCustomData('ircAction', true);
+      context.setCustomData('isEmote', true);
       self._AKP48.onMessage(context);
     });
 
@@ -78,7 +79,18 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       self._client.join(channel, function() {
         var joinMsg = `Hello, everyone! I'm ${self._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
         self._client.say(channel, joinMsg);
-        self._AKP48.sentMessage(channel, joinMsg, {myNick: self._client.nick, instanceId: self._id});
+        var ctx = new this._AKP48.Context({
+          instance: this,
+          instanceType: 'irc',
+          nick: 'GLOBAL',
+          text: joinMsg,
+          to: channel,
+          user: `GLOBAL`,
+          commandDelimiters: '',
+          myNick: self._client.nick,
+          permissions: []
+        });
+        self._AKP48.logMessage(ctx);
         self._AKP48.saveConfig(self._config, self._id, true);
       });
     });
@@ -103,19 +115,14 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       var message = context.text();
       if(!context.getCustomData('noPrefix')) {message = `${context.nick()}: ${message}`;}
       try {
-        self._client.say(context.to(), context.text());
+        if(context.getCustomData('isEmote')) {
+          self._client.action(context.to(), context.text());
+        } else {
+          self._client.say(context.to(), message);
+        }
         self._AKP48.logMessage(context);
       } catch (e) {
         global.logger.error(`${self.name}|${self._id}: Error sending message to channel '${context.to()}'! ${e.name}: ${e.message}`, e);
-      }
-    });
-
-    this._AKP48.on('emote_'+this._id, function(to, message, context) {
-      try {
-        self._client.action(to, message);
-        self._AKP48.sentMessage(to, message, context);
-      } catch (e) {
-        global.logger.error(`${self.name}|${self._id}: Error sending action to channel '${to}'! ${e.name}: ${e.message}`);
       }
     });
 
@@ -126,7 +133,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
           if(self._config.chanConfig[chan].alert) {
             try {
               self._client.say(chan, context.text());
-              self._AKP48.sentMessage(chan, context.text(), context.cloneWith({instance: self, myNick: self._client.nick}));
+              self._AKP48.logMessage(context.cloneWith({instance: self, myNick: self._client.nick}));
             } catch (e) {
               global.logger.error(`${self.name}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`, e);
             }
