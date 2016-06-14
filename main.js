@@ -82,7 +82,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
         var ctx = new this._AKP48.Context({
           instance: this,
           instanceType: 'irc',
-          nick: 'GLOBAL',
+          nick: from,
           text: joinMsg,
           to: channel,
           user: `GLOBAL`,
@@ -133,7 +133,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
           if(self._config.chanConfig[chan].alert) {
             try {
               self._client.say(chan, context.text());
-              self._AKP48.logMessage(context.cloneWith({instance: self, myNick: self._client.nick}));
+              self._AKP48.logMessage(context.cloneWith({instance: self, myNick: self._client.nick, to: chan}));
             } catch (e) {
               global.logger.error(`${self.name}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`, e);
             }
