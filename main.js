@@ -3,12 +3,16 @@ const irc = require('irc');
 const Promise = require('bluebird'); // jshint ignore:line
 
 class IRC extends global.AKP48.pluginTypes.ServerConnector {
-  constructor(AKP48, config, id, persistentObjects) {
-    super('IRC', AKP48, config, id);
+  constructor(AKP48) {
+    super(AKP48, 'irc');
+  }
+
+  load(persistentObjects) {
     this._defaultCommandDelimiters = ['!', '.'];
     var self = this;
+    var config = this._config;
     if(!config || !config.server || !config.nick) {
-      global.logger.error(`${self._pluginName}|${self._id}: Required server and/or nick options missing from config!`);
+      global.logger.error(`${self.name}|${self._id}: Required server and/or nick options missing from config!`);
       this._error = true;
       return;
     }
@@ -36,52 +40,64 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     }
 
     this._client.on('nick', (oldNick, newNick) => {
-      global.logger.stupid(`${self._pluginName}|${self._id}: Caught nick change event. "${oldNick}" => "${newNick}"`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught nick change event. "${oldNick}" => "${newNick}"`);
       self._AKP48.emit('nick', oldNick, newNick, self);
     });
 
     this._client.on('message', function(nick, to, text, message) {
       if(to === config.nick) { to = nick; }
-      self._AKP48.onMessage(text, self.createContextsFromMessage(message, to));
+      self._AKP48.onMessage(self.createContextFromMessage(message, to));
     });
 
     this._client.on('action', function(nick, to, text, message) {
       if(to === config.nick) { to = nick; }
-      var context = self.createContextsFromMessage(message, to);
-      context.isAction = true;
-      self._AKP48.onMessage(text, context);
+      var context = self.createContextFromMessage(message, to);
+      context.setCustomData('ircAction', true);
+      context.setCustomData('isEmote', true);
+      self._AKP48.onMessage(context);
     });
 
     this._client.on('registered', function() {
-      global.logger.verbose(`${self._pluginName}|${self._id}: Connected to ${self._config.server}.`);
+      global.logger.verbose(`${self.name}|${self._id}: Connected to ${self._config.server}.`);
       self._AKP48.emit('registeredOnServer', self._id, self);
     });
 
     this._client.on('join', function(chan, nick) {
       if(nick === self._client.nick) { return; }
-      global.logger.stupid(`${self._pluginName}|${self._id}: Caught join event on ${self._config.server}.`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught join event on ${self._config.server}.`);
       self._AKP48.emit('ircJoin', chan, nick, self);
     });
 
     this._client.on('part', function(chan, nick, reason) {
       if(nick === self._client.nick) { return; }
-      global.logger.stupid(`${self._pluginName}|${self._id}: Caught part event on ${self._config.server}.`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught part event on ${self._config.server}.`);
       self._AKP48.emit('ircPart', chan, nick, reason, self);
     });
 
     this._client.on('invite', function(channel, from) {
-      global.logger.debug(`${self._pluginName}|${self._id}: Invite to channel "${channel}" received from ${from}. Joining channel.`);
+      global.logger.debug(`${self.name}|${self._id}: Invite to channel "${channel}" received from ${from}. Joining channel.`);
       self._client.join(channel, function() {
         var joinMsg = `Hello, everyone! I'm ${self._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
         self._client.say(channel, joinMsg);
-        self._AKP48.sentMessage(channel, joinMsg, {myNick: self._client.nick, instanceId: self._id});
+        var ctx = new this._AKP48.Context({
+          instance: this,
+          instanceType: 'irc',
+          nick: from,
+          text: joinMsg,
+          to: channel,
+          user: `GLOBAL`,
+          commandDelimiters: '',
+          myNick: self._client.nick,
+          permissions: []
+        });
+        self._AKP48.logMessage(ctx);
         self._AKP48.saveConfig(self._config, self._id, true);
       });
     });
 
     this._client.on('kick', function(channel, nick, by, reason) {
       if(nick === self._client.nick) {
-        global.logger.debug(`${self._pluginName}|${self._id}: Kicked from ${channel} by ${by} for "${reason}". Removing channel from config.`);
+        global.logger.debug(`${self.name}|${self._id}: Kicked from ${channel} by ${by} for "${reason}". Removing channel from config.`);
         var index = self._config.channels.indexOf(channel);
         while(index > -1) {
           self._config.channels.splice(index, 1);
@@ -92,38 +108,34 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     });
 
     this._client.on('error', function(message) {
-      global.logger.error(`${self._pluginName}|${self._id}: Error received from ${message.server}! ${message.command}: ${message.args}`);
+      global.logger.error(`${self.name}|${self._id}: Error received from ${message.server}! ${message.command}: ${message.args}`);
     });
 
-    this._AKP48.on('msg_'+this._id, function(to, message, context) {
-      if(!context.noPrefix) {message = `${context.nick}: ${message}`;}
+    this._AKP48.on('msg_'+this._id, function(context) {
+      var message = context.text();
+      if(!context.getCustomData('noPrefix')) {message = `${context.nick()}: ${message}`;}
       try {
-        self._client.say(to, message);
-        self._AKP48.sentMessage(to, message, context);
+        if(context.getCustomData('isEmote')) {
+          self._client.action(context.to(), context.text());
+        } else {
+          self._client.say(context.to(), message);
+        }
+        self._AKP48.logMessage(context);
       } catch (e) {
-        global.logger.error(`${self._pluginName}|${self._id}: Error sending message to channel '${to}'! ${e.name}: ${e.message}`);
+        global.logger.error(`${self.name}|${self._id}: Error sending message to channel '${context.to()}'! ${e.name}: ${e.message}`, e);
       }
     });
 
-    this._AKP48.on('emote_'+this._id, function(to, message, context) {
-      try {
-        self._client.action(to, message);
-        self._AKP48.sentMessage(to, message, context);
-      } catch (e) {
-        global.logger.error(`${self._pluginName}|${self._id}: Error sending action to channel '${to}'! ${e.name}: ${e.message}`);
-      }
-    });
-
-    this._AKP48.on('alert', function(message) {
+    this._AKP48.on('alert', function(context) {
       for (var i = 0; i < self._config.channels.length; i++) {
         var chan = self._config.channels[i];
         if(self._config.chanConfig && self._config.chanConfig[chan]) {
           if(self._config.chanConfig[chan].alert) {
             try {
-              self._client.say(chan, message);
-              self._AKP48.sentMessage(chan, message, {instanceId: self._id, myNick: self._client.nick});
+              self._client.say(chan, context.text());
+              self._AKP48.logMessage(context.cloneWith({instance: self, myNick: self._client.nick, to: chan}));
             } catch (e) {
-              global.logger.error(`${self._pluginName}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`);
+              global.logger.error(`${self.name}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`, e);
             }
           }
         }
@@ -133,11 +145,11 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
 
   connect() {
     if(this._error) {
-      global.logger.error(`${this._pluginName}|${this._id}: Cannot connect. Check log for errors.`);
+      global.logger.error(`${this.name}|${this._id}: Cannot connect. Check log for errors.`);
       return;
     }
     if(this._connected) {
-      global.logger.debug(`${this._pluginName}|${this._id}: Using previous connection.`);
+      global.logger.debug(`${this.name}|${this._id}: Using previous connection.`);
       this._connected = false;
     } else {
       this._client.connect();
@@ -147,70 +159,36 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
 
   disconnect(msg) {
     if(this._error) {
-      global.logger.error(`${this._pluginName}|${this._id}: Cannot disconnect. Check log for errors.`);
+      global.logger.error(`${this.name}|${this._id}: Cannot disconnect. Check log for errors.`);
       return;
     }
     this._client.disconnect(msg || 'Goodbye.');
   }
 }
 
-IRC.prototype.createContextsFromMessage = function (message, to) {
-  var textArray = message.args[1].split(/[^\\]\|/);
-  var ctxs = [];
+IRC.prototype.createContextFromMessage = function (message, to) {
   var perms = this.getPermissions(`${message.user}@${message.host}`, message.nick, to);
+  var delimit = this.getChannelConfig(to).commandDelimiters || this._config.commandDelimiters || this._defaultCommandDelimiters;
 
-  for (var i = 0; i < textArray.length; i++) {
-    textArray[i] = textArray[i].trim();
-    var delimiterLength = this.isTextACommand(textArray[i], to);
-    if(delimiterLength) {
-      textArray[i] = textArray[i].slice(delimiterLength).trim();
-    }
+  var ctx = new this._AKP48.Context({
+    instance: this,
+    instanceType: 'irc',
+    nick: message.nick,
+    text: message.args[1],
+    to: to,
+    user: `${message.user}@${message.host}`,
+    commandDelimiters: delimit,
+    myNick: this._client.nick,
+    permissions: perms,
+    rawMessage: message
+  });
 
-    var ctx = {
-      rawMessage: message,
-      nick: message.nick,
-      user: message.prefix,
-      permissions: perms,
-      rawText: message.args[1],
-      text: textArray[i].trim(),
-      to: to,
-      myNick: this._client.nick,
-      instanceId: this._id,
-      instanceType: 'irc',
-      instance: this,
-      isCmd: delimiterLength ? true : false
-    };
-
-    // if user is banned, drop request after first context is created.
-    if(perms.includes('AKP48.banned')) {
-      // emit fullMsg event though, for consumers that want it.
-      // (that's why we wait until after the context is created)
-      this._AKP48.emit('fullMsg', message.args[1], ctx);
-      return;
-    }
-
-    ctxs.push(ctx);
-  }
-
-  ctxs[ctxs.length-1].last = true;
-
-  return ctxs;
+  return ctx;
 };
 
 IRC.prototype.getChannelConfig = function (channel) {
   if(!this._config.chanConfig) {return {};}
   return this._config.chanConfig[channel] || {};
-};
-
-IRC.prototype.isTextACommand = function (text, channel) {
-  var delimit = this.getChannelConfig(channel).commandDelimiters || this._config.commandDelimiters || this._defaultCommandDelimiters;
-  for (var i = 0; i < delimit.length; i++) {
-    if(text.toLowerCase().startsWith(delimit[i].toLowerCase())) {
-      return delimit[i].length;
-    }
-  }
-
-  return false;
 };
 
 IRC.prototype.getPermissions = function (prefix, nick, channel) {
@@ -273,5 +251,3 @@ IRC.prototype.getPersistentObjects = function () {
 };
 
 module.exports = IRC;
-module.exports.type = 'ServerConnector';
-module.exports.pluginName = 'irc';
