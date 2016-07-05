@@ -4,7 +4,7 @@ const Promise = require('bluebird'); // jshint ignore:line
 
 class IRC extends global.AKP48.pluginTypes.ServerConnector {
   constructor(AKP48) {
-    super(AKP48, 'irc');
+    super(AKP48, 'irc-server');
   }
 
   load(persistentObjects) {
@@ -77,8 +77,10 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     this._client.on('invite', function(channel, from) {
       global.logger.debug(`${self.name}|${self._id}: Invite to channel "${channel}" received from ${from}. Joining channel.`);
       self._client.join(channel, function() {
-        var joinMsg = `Hello, everyone! I'm ${self._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
-        self._client.say(channel, joinMsg);
+        var joinMsg = self._config.joinMsg || `Hello, everyone! I'm ${self._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
+        if(!self._config.silentJoin) {
+          self._client.say(channel, joinMsg);
+        }
         var ctx = new this._AKP48.Context({
           instance: this,
           instanceType: 'irc',
