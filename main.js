@@ -61,16 +61,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       global.logger.verbose(`${self.name}|${self._id}: Connected to ${self._config.server}.`);
       self._AKP48.emit('registeredOnServer', self._id, self);
 
-      //check nick
-      if(self._client.nick !== self._config.nick) {
-        //if nick isn't right, attempt to set it back every 10 seconds until we successfully set it.
-        var setNick = setInterval(() => {
-          self._client.send('NICK', self._config.nick);
-          if(self._client.nick === self._config.nick) {
-            clearInterval(setNick);
-          }
-        }, 10000);
-      }
+      self.checkNick();
     });
 
     this._client.on('join', function(chan, nick) {
@@ -168,6 +159,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       this._client.connect();
     }
     this._AKP48.emit('serverConnect', this._id, this);
+    this.checkNick();
   }
 
   disconnect(msg) {
@@ -176,6 +168,18 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       return;
     }
     this._client.disconnect(msg || 'Goodbye.');
+  }
+
+  checkNick() {
+    if(this._client.nick !== this._config.nick) {
+      //if nick isn't right, attempt to set it back every 10 seconds until we successfully set it.
+      this.setNickInterval = this.setNickInterval || setInterval(() => {
+        this._client.send('NICK', this._config.nick);
+        if(this._client.nick === this._config.nick) {
+          clearInterval(this.setNickInterval);
+        }
+      }, 10000);
+    }
   }
 }
 
