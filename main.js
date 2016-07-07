@@ -27,6 +27,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       this._client.removeAllListeners('action');
       this._client.removeAllListeners('join');
       this._client.removeAllListeners('part');
+      this._client.removeAllListeners('nick');
       this._connected = true;
     } else {
       this._client = new irc.Client(config.server, config.nick, {
