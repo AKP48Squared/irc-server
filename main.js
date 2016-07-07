@@ -60,17 +60,28 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     this._client.on('registered', function() {
       global.logger.verbose(`${self.name}|${self._id}: Connected to ${self._config.server}.`);
       self._AKP48.emit('registeredOnServer', self._id, self);
+
+      //check nick
+      if(self._client.nick !== self._config.nick) {
+        //if nick isn't right, attempt to set it back every 10 seconds until we successfully set it.
+        var setNick = setInterval(() => {
+          self._client.send('NICK', self._config.nick);
+          if(self._client.nick === self._config.nick) {
+            clearInterval(setNick);
+          }
+        }, 10000);
+      }
     });
 
     this._client.on('join', function(chan, nick) {
       if(nick === self._client.nick) { return; }
-      global.logger.stupid(`${self.name}|${self._id}: Caught join event on ${self._config.server}.`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught join event on ${self._config.server}. ${nick} joined ${chan}.`);
       self._AKP48.emit('ircJoin', chan, nick, self);
     });
 
     this._client.on('part', function(chan, nick, reason) {
       if(nick === self._client.nick) { return; }
-      global.logger.stupid(`${self.name}|${self._id}: Caught part event on ${self._config.server}.`);
+      global.logger.stupid(`${self.name}|${self._id}: Caught part event on ${self._config.server}. ${nick} left ${chan} (${reason}).`);
       self._AKP48.emit('ircPart', chan, nick, reason, self);
     });
 
