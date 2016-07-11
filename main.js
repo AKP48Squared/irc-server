@@ -40,6 +40,8 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       });
     }
 
+    this.joinMsg = config.joinMsg || `Hello, everyone! I'm ${this._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
+
     this._client.on('nick', (oldNick, newNick) => {
       global.logger.stupid(`${self.name}|${self._id}: Caught nick change event. "${oldNick}" => "${newNick}"`);
       self._AKP48.emit('nick', oldNick, newNick, self);
@@ -80,15 +82,14 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     this._client.on('invite', function(channel, from) {
       global.logger.debug(`${self.name}|${self._id}: Invite to channel "${channel}" received from ${from}. Joining channel.`);
       self._client.join(channel, function() {
-        var joinMsg = self._config.joinMsg || `Hello, everyone! I'm ${self._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
         if(!self._config.silentJoin) {
-          self._client.say(channel, joinMsg);
+          self._client.say(channel, self.joinMsg);
         }
         var ctx = new this._AKP48.Context({
           instance: this,
           instanceType: 'irc',
           nick: from,
-          text: joinMsg,
+          text: self.joinMsg,
           to: channel,
           user: `GLOBAL`,
           commandDelimiters: '',
