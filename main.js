@@ -31,7 +31,8 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
         port: config.port || 6667,
         userName: config.userName || 'AKP48',
         realName: config.realName || 'AKP48',
-        channels: config.channels || []
+        channels: config.channels || [],
+        password: config.password || null
       });
     }
 
