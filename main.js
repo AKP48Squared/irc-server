@@ -86,8 +86,8 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
         if(!self._config.silentJoin) {
           self._client.say(channel, self.joinMsg);
         }
-        var ctx = new this._AKP48.Context({
-          instance: this,
+        var ctx = new self._AKP48.Context({
+          instance: self,
           instanceType: 'irc',
           nick: from,
           text: self.joinMsg,
