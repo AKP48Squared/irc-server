@@ -1,6 +1,6 @@
 {
   "name": "akp48-plugin-irc-server",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "IRC server plugin for AKP48.",
   "main": "main.js",
   "scripts": {
