@@ -173,6 +173,23 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     this._client.disconnect(msg || 'Goodbye.');
   }
 
+  getDefaultConfig() {
+    return {
+      '_id': uuid.v4(),
+      'plugin': 'irc',
+      'config': {
+        'server': 'irc.esper.net',
+        'nick': 'MyAKP48Instance',
+        'channels': ['#AKP'],
+        'chanConfig': {
+          '#AKP': {
+            'commandDelimiters': ['.', '!']
+          }
+        }
+      }
+    };
+  }
+
   checkNick() {
     if(this._client.nick !== this._config.nick) {
       //if nick isn't right, attempt to set it back every 10 seconds until we successfully set it.
