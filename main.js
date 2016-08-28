@@ -1,6 +1,7 @@
 'use strict';
 const irc = require('irc');
 const Promise = require('bluebird'); // jshint ignore:line
+const uuid = require('node-uuid');
 
 class IRC extends global.AKP48.pluginTypes.ServerConnector {
   constructor(AKP48) {
@@ -176,7 +177,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
   getDefaultConfig() {
     return {
       '_id': uuid.v4(),
-      'plugin': 'irc',
+      'plugin': 'irc-server',
       'config': {
         'server': 'irc.esper.net',
         'nick': 'MyAKP48Instance',
