@@ -42,7 +42,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       });
     }
 
-    this.joinMsg = config.joinMsg || `Hello, everyone! I'm ${this._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
+    this.joinMsg = config.joinMsg || null;
 
     this._client.on('nick', (oldNick, newNick) => {
       global.logger.stupid(`${self.name}|${self._id}: Caught nick change event. "${oldNick}" => "${newNick}"`);
@@ -163,6 +163,12 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       this._client.connect();
     }
     this._AKP48.emit('serverConnect', this._id, this);
+    
+    // set joinMsg after 2 seconds, to allow time for connection.
+    setTimeout(() => {
+      this.joinMsg = this.joinMsg || `Hello, everyone! I'm ${this._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
+    }, 2000);
+    
     this.checkNick();
   }
 
