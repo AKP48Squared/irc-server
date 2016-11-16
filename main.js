@@ -10,6 +10,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
 
   load(persistentObjects) {
     this._defaultCommandDelimiters = ['!', '.'];
+    this.TextDecorator = require('irc-colors');
     var self = this;
     var config = this._config;
     if(!config || !config.server || !config.nick) {
@@ -163,12 +164,12 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
       this._client.connect();
     }
     this._AKP48.emit('serverConnect', this._id, this);
-    
+
     // set joinMsg after 2 seconds, to allow time for connection.
     setTimeout(() => {
       this.joinMsg = this.joinMsg || `Hello, everyone! I'm ${this._client.nick}! I respond to commands and generally try to be helpful. For more information, say ".help"!`;
     }, 2000);
-    
+
     this.checkNick();
   }
 
