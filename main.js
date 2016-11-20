@@ -10,7 +10,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
 
   load(persistentObjects) {
     this._defaultCommandDelimiters = ['!', '.'];
-    this.TextDecorator = require('irc-colors');
+    this.TextDecorator = new (require('./IRCDecorator'))();
     var self = this;
     var config = this._config;
     if(!config || !config.server || !config.nick) {
@@ -121,7 +121,7 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     });
 
     this._AKP48.on('msg_'+this._id, function(context) {
-      var message = context.text();
+      var message = self.TextDecorator.parse(context.text());
       if(!context.getCustomData('noPrefix')) {message = `${context.nick()}: ${message}`;}
       try {
         if(context.getCustomData('isEmote')) {
