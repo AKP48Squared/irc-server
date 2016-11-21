@@ -13,10 +13,19 @@ class IRCDecorator extends global.AKP48.TextDecorator {
       for (var j = 0; j < s.length; j++) {
         if (typeof c[s[j]] === 'function') {
           str = c[s[j]](str);
+        } else {
+          //custom styles can be defined here.
+          switch(s[j]) {
+            case 'link':
+              str = c.navy.underline(str);
+              break;
+            default:
+              break;
+          }
         }
       }
     }
-    
+
     return str;
   }
 
