@@ -1,7 +1,7 @@
 'use strict';
 const c = require('irc-colors');
 
-class IRCDecorator extends global.AKP48.TextDecorator {
+class IRCDecorator extends global.AKP48.TextDecorators.default {
   constructor() {
     super();
   }
