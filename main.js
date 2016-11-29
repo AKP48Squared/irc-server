@@ -290,9 +290,11 @@ IRC.prototype.getPermissions = function (prefix, nick, channel) {
 };
 
 IRC.prototype.getPersistentObjects = function () {
-  return {
+  let temp = {
     client: this._client
   };
+  this._client = null;
+  return temp;
 };
 
 module.exports = IRC;
