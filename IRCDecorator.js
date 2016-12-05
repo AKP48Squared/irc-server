@@ -19,6 +19,9 @@ class IRCDecorator extends global.AKP48.TextDecorators.default {
             case 'link':
               str = c.navy.underline(str);
               break;
+            case 'reset':
+              str = c.stripColorsAndStyle(str);
+              break;
             default:
               break;
           }
