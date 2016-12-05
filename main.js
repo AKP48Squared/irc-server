@@ -136,12 +136,13 @@ class IRC extends global.AKP48.pluginTypes.ServerConnector {
     });
 
     this._AKP48.on('alert', function(context) {
+      var message = self.TextDecorator.parse(context.text());
       for (var i = 0; i < self._config.channels.length; i++) {
         var chan = self._config.channels[i];
         if(self._config.chanConfig && self._config.chanConfig[chan]) {
           if(self._config.chanConfig[chan].alert) {
             try {
-              self._client.say(chan, context.text());
+              self._client.say(chan, message);
               self._AKP48.logMessage(context.cloneWith({instance: self, myNick: self._client.nick, to: chan}));
             } catch (e) {
               global.logger.error(`${self.name}|${self._id}: Error sending alert to channel '${chan}'! ${e.name}: ${e.message}`, e);
